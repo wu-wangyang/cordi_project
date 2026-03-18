@@ -1,0 +1,8 @@
+This is a placeholder file.
+
+A real Terraform plan could not be generated in this environment because AWS credentials and Terraform were not available here.
+
+Before submission, replace this file by running locally:
+
+terraform init
+terraform plan -var-file=dev.tfvars | tee terraform-plan.txt
