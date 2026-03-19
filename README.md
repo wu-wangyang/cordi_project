@@ -37,7 +37,6 @@ Each request is also logged to S3 with the raw input, model output, parsed outpu
 │       └── index.py
 ├── docs/
 │   ├── ai-usage.md
-│   └── demo-checklist.md
 ├── frontend/
 │   ├── app/
 │   │   ├── globals.css
@@ -65,7 +64,7 @@ Each request is also logged to S3 with the raw input, model output, parsed outpu
 ## Prerequisites
 
 Install these locally before running the project:
-- Node.js 20+
+- Node.js 15+
 - npm 10+
 - Terraform 1.6+
 - AWS CLI configured with credentials that can create Lambda, API Gateway, IAM, and S3 resources
@@ -75,8 +74,8 @@ You also need a valid **Gemini API key**.
 ## Important configuration note
 
 The original starter Terraform variable names are still called:
-- `anthropic_api_key`
-- `anthropic_model`
+- `api_key`
+- `model`
 
 In this implementation, those Terraform variables are reused to avoid a wider Terraform refactor, but they are passed into Lambda as Gemini settings.
 
