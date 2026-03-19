@@ -218,4 +218,16 @@ The infrastructure is intentionally split into logical files:
 This implementation uses **Gemini** through the Google Generative Language API.
 
 In the current codebase, Terraform variables still use the names `api_key` and `model` for compatibility with the original starter, but the deployed Lambda uses those values as the Gemini API key and Gemini model configuration.
- 
+
+## AI Usage
+AI tools were used in the build process to support planning, debugging, and documentation. Specifically, AI was used to:
+
+clarify the project requirements and break the task into frontend, backend, and infrastructure steps
+
+troubleshoot local setup, AWS CloudShell usage, Terraform errors, and API integration issues
+
+refine the Lambda implementation and improve the README structure
+
+generate and revise sample test inputs for the application
+
+All implementation decisions were reviewed manually before being applied. Generated suggestions were tested and adjusted during development.
