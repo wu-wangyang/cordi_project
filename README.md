@@ -185,21 +185,16 @@ The frontend includes:
 - sections for Summary, Key Decisions, and Action Items
 
 ## S3 logging
-
+![logo](docs/images/log_example.png)
 For every successful request, Lambda writes a JSON object to S3 containing:
 - `timestamp`
 - `input`
 - `raw_output`
 - `parsed_output`
 
+![logo](docs/images/log_key.png)
+<p>
 The UI also displays the returned S3 log key so the result can be verified.
-
-## Security notes
-
-- Real secrets should not be committed into Git
-- `frontend/.env.local` is for local frontend configuration only
-- The model API key is injected into Lambda through Terraform-provisioned environment variables
-- Before submission, verify that `dev.tfvars` does not contain a real committed key
 
 ## Terraform files
 
@@ -213,13 +208,10 @@ The infrastructure is intentionally split into logical files:
 - `outputs.tf`
 
 ## Submission checklist
-
-Before submitting, confirm that you have:
-- a working end-to-end screenshot or short demo video
+- a working end-to-end screenshot
+  ![logo](docs/images/working_sample.png)
 - `infra/terraform-plan.txt` generated from your real environment
-- a clean README with exact run steps 
-- screenshots or exported history of AI assistance used during the task
-- removed any real secrets from the repository
+  ![logo](docs/images/terraform-plan.png)
 
 ## Model used
 
