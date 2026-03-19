@@ -221,6 +221,7 @@ In the current codebase, Terraform variables still use the names `api_key` and `
 
 ## AI Usage 
 (please see [docs/ai-usage.md](docs/ai-usage.md) for full conversation history)
+<br>
 AI tools were used in the build process to support planning, debugging, and documentation. Specifically, AI was used to:
 
 clarify the project requirements and break the task into frontend, backend, and infrastructure steps
