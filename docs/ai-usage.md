@@ -1,6 +1,8 @@
 # AI usage 
 <img width="860" height="724" alt="Screenshot 2026-03-19 at 12 55 58" src="https://github.com/user-attachments/assets/a7de6a47-d98e-45c4-88af-421a2862d8aa" />
+<p>
 Me: based on this document, can you help me to design a simple structured codes?
+<p>
 ChatGPT: Yes — based on the assessment, the simplest safe design is:
 
 * **Next.js 15 frontend**
@@ -620,8 +622,11 @@ For the submission, keep the backend response as **clean JSON** even if the mode
 If you want, I can now turn this into a **full copy-paste starter repo** with each file written out one by one.
 
 <img width="694" height="365" alt="Screenshot 2026-03-19 at 13 02 44" src="https://github.com/user-attachments/assets/efa5a495-df6a-4408-b82b-53100c1e4da7" />
+<p>
 
 ME: can you give me a few examples of raw meeting notes so that I can test it
+<p>
+
 ChatGPT: 
 Absolutely — here are a few raw meeting notes examples in different styles so you can test both clean and messy inputs.
 ## Example 1 — fairly clear notes
@@ -826,8 +831,11 @@ Action items:
 ```
 
 <img width="742" height="428" alt="Screenshot 2026-03-19 at 13 03 56" src="https://github.com/user-attachments/assets/f3e285ff-18ea-4258-92eb-17c504d4f332" />
+<p>
 
 ME: how to install terraform and apply
+<p>
+
 ChatGPT: Yes — for your project, the simplest flow on your Mac is:
 
 1. install Terraform with Homebrew
@@ -927,5 +935,263 @@ terraform output -raw api_base_url
 If you get stuck on any error from `init`, `plan`, or `apply`, paste the terminal output here and I’ll tell you exactly what to fix.
 
 
+<img width="866" height="657" alt="Screenshot 2026-03-19 at 13 12 04" src="https://github.com/user-attachments/assets/7c0c7591-428b-4a80-aa71-0b51507e1992" />
+<p>
+ME:the claude api seems not working, can you change to gemini?
+<p>
+ChatGPT:Yes — and the cleanest swap is to keep your frontend and infrastructure shape the same, and only replace the model call plus a couple of Terraform variable names. Gemini’s REST text-generation method is `models.generateContent`, and the API supports structured JSON output via `responseMimeType: "application/json"` plus a schema, which is a very good fit for your `summary / keyDecisions / actionItems` response. Google’s docs also list `gemini-2.5-flash` as the stable, price-performance model in the 2.5 family. ([Google AI for Developers][1])
 
+Use this version of `lambda/index.js`:
+
+```js
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+const s3 = new S3Client({ region: process.env.AWS_REGION });
+
+async function callGemini(notes) {
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+  const prompt = `
+You are a meeting notes summariser.
+
+Extract the meeting notes into this JSON structure:
+{
+  "summary": "2-3 sentence summary",
+  "keyDecisions": ["decision 1", "decision 2"],
+  "actionItems": ["owner: task by due date", "owner: task"]
+}
+
+Rules:
+- Return JSON only
+- Keep summary concise
+- If no clear decisions or actions are present, return empty arrays
+- Preserve owner names and due dates when they appear
+
+Meeting notes:
+${notes}
+`.trim();
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": process.env.GEMINI_API_KEY,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              summary: { type: "string" },
+              keyDecisions: {
+                type: "array",
+                items: { type: "string" },
+              },
+              actionItems: {
+                type: "array",
+                items: { type: "string" },
+              },
+            },
+            required: ["summary", "keyDecisions", "actionItems"],
+          },
+        },
+      }),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(`Gemini API error: ${JSON.stringify(data)}`);
+  }
+
+  if (data.promptFeedback?.blockReason) {
+    throw new Error(`Gemini blocked the prompt: ${data.promptFeedback.blockReason}`);
+  }
+
+  const rawText =
+    data.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text || "")
+      .join("")
+      .trim() || "";
+
+  if (!rawText) {
+    throw new Error("Gemini returned no text");
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (err) {
+    throw new Error(`Failed to parse Gemini JSON output: ${rawText}`);
+  }
+
+  return {
+    modelOutput: rawText,
+    parsed,
+  };
+}
+
+export const handler = async (event) => {
+  try {
+    const body = JSON.parse(event.body || "{}");
+    const notes = body.notes?.trim();
+
+    if (!notes) {
+      return {
+        statusCode: 400,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "http://localhost:3000",
+        },
+        body: JSON.stringify({ error: "notes is required" }),
+      };
+    }
+
+    const { modelOutput, parsed } = await callGemini(notes);
+
+    const timestamp = new Date().toISOString();
+    const logKey = `logs/${Date.now()}.json`;
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.LOG_BUCKET_NAME,
+        Key: logKey,
+        ContentType: "application/json",
+        Body: JSON.stringify(
+          {
+            timestamp,
+            rawInput: notes,
+            modelOutput,
+            parsedOutput: parsed,
+          },
+          null,
+          2
+        ),
+      })
+    );
+
+    return {
+      statusCode: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "http://localhost:3000",
+      },
+      body: JSON.stringify({
+        ...parsed,
+        rawModelOutput: modelOutput,
+        logKey,
+      }),
+    };
+  } catch (error) {
+    return {
+      statusCode: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "http://localhost:3000",
+      },
+      body: JSON.stringify({
+        error: error instanceof Error ? error.message : "Internal server error",
+      }),
+    };
+  }
+};
+```
+
+This uses Gemini’s `generateContent` REST method, sends the prompt in `contents[].parts[].text`, and reads the generated text back from `candidates[].content.parts[].text`. It also uses Gemini’s structured-output controls so your Lambda gets predictable JSON instead of fragile free-form text. If Gemini blocks the prompt, the API reports that via `promptFeedback` and may return no candidates, so I added a guard for that too. ([Google AI for Developers][1])
+
+Then change `infra/variables.tf` to this:
+
+```hcl
+variable "aws_region" {
+  type = string
+}
+
+variable "project_name" {
+  type = string
+}
+
+variable "gemini_api_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "gemini_model" {
+  type    = string
+  default = "gemini-2.5-flash"
+}
+```
+
+And change the Lambda environment section in `infra/lambda.tf` to:
+
+```hcl
+environment {
+  variables = {
+    LOG_BUCKET_NAME = aws_s3_bucket.logs.bucket
+    GEMINI_API_KEY  = var.gemini_api_key
+    GEMINI_MODEL    = var.gemini_model
+  }
+}
+```
+
+Then update `infra/dev.tfvars`:
+
+```hcl
+aws_region     = "ap-southeast-2"
+project_name   = "cordi-meeting-notes"
+gemini_api_key = "your-real-gemini-key"
+gemini_model   = "gemini-2.5-flash"
+```
+
+Google’s docs show Gemini API keys are passed either via environment variables or explicitly, and the REST examples use the `x-goog-api-key` header or a `?key=` query parameter. ([Google AI for Developers][2])
+
+Your `lambda/package.json` can stay exactly as it is if you keep using plain `fetch`:
+
+```json
+{
+  "name": "cordi-lambda",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.750.0"
+  }
+}
+```
+
+If you wanted the official JavaScript SDK instead, Google’s current package is `@google/genai`, but for this assessment the raw REST call is simpler and avoids extra moving parts. ([Google AI for Developers][3])
+
+A quick curl test for your Gemini key is:
+
+```bash
+curl "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent" \
+  -H "x-goog-api-key: YOUR_GEMINI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{
+    "contents": [{
+      "parts": [{"text": "Summarise: Alice will finish the README by Friday, Bob will test the API tonight."}]
+    }]
+  }'
+```
+
+Google’s API-version docs show the stable REST form as `/v1/models/{model}:generateContent`, while the general API reference also documents the `v1beta` form. For your Lambda I used `v1beta` because the structured-output examples are documented there very directly; for a simple plain-text smoke test like the curl above, the stable `v1` endpoint is fine. ([Google AI for Developers][4])
+
+After those edits, redeploy with:
+
+```bash
+cd infra
+terraform init
+terraform plan -var-file=dev.tfvars
+terraform apply -var-file=dev.tfvars
+```
+
+If you want, I can rewrite your full repo files one-by-one in final copy-paste form with Gemini already swapped in.
 
