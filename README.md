@@ -1,26 +1,32 @@
 # CORDi Technical Assessment — AI Meeting Notes Summariser
 
-This repository contains a complete starter implementation for the CORDi full-stack technical assessment.
+This repository contains my submission for the CORDi full-stack technical assessment.
 
-It includes:
-- **Frontend:** Next.js 15 + TypeScript + Tailwind CSS
-- **Backend:** AWS Lambda (Python 3.12) behind API Gateway
-- **Storage:** S3 logging of every request/response pair
-- **Infrastructure as Code:** Terraform with `dev.tfvars`
+The application lets a user paste raw meeting notes into a Next.js web UI, send them to an AWS Lambda function through API Gateway, and receive a structured summary containing:
+- a short summary
+- key decisions
+- action items
 
-## What the app does
-A user pastes raw meeting notes into a text area, clicks **Summarise Notes**, and receives:
-- A 2–3 sentence summary
-- A list of key decisions
-- A list of action items
+Each request is also logged to S3 with the raw input, model output, parsed output, and timestamp.
 
-The Lambda also writes a JSON log to S3 containing:
-- raw input
-- AI output
-- parsed output
-- timestamp
+## Stack
 
----
+- **Frontend:** Next.js 15, App Router, TypeScript, Tailwind CSS
+- **Backend:** AWS Lambda (Python 3.12)
+- **API:** API Gateway HTTP API with CORS enabled for localhost
+- **Storage:** Amazon S3 for JSON request/response logs
+- **Infrastructure:** Terraform split into logical files under `infra/`
+- **Model integration:** Gemini via Google Generative Language API
+
+## Architecture
+![logo](docs/images/web_screenshot.png)
+1. The user enters raw meeting notes in the Next.js frontend.
+2. The frontend sends a `POST /summarise` request to API Gateway.
+3. API Gateway invokes the Lambda summariser.
+4. The Lambda sends a prompt to Gemini and receives a structured response.
+5. The Lambda parses the response into `summary`, `keyDecisions`, and `actionItems`.
+6. The Lambda writes a JSON log to S3.
+7. The parsed response is returned to the frontend for display.
 
 ## Project structure
 
@@ -56,152 +62,180 @@ The Lambda also writes a JSON log to S3 containing:
 └── README.md
 ```
 
----
+## Prerequisites
 
-## 1. Prerequisites
-
-Make sure you have the following installed locally:
+Install these locally before running the project:
 - Node.js 20+
 - npm 10+
 - Terraform 1.6+
-- AWS CLI configured with credentials
+- AWS CLI configured with credentials that can create Lambda, API Gateway, IAM, and S3 resources
 
-sudo dnf install -y dnf-plugins-core
-sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-sudo dnf -y install terraform
-terraform version
+You also need a valid **Gemini API key**.
 
----
+## Important configuration note
 
-## 2. Frontend setup
+The original starter Terraform variable names are still called:
+- `anthropic_api_key`
+- `anthropic_model`
 
-```bash
-cd frontend
-cp .env.local.example .env.local
-npm install
-npm run dev
+In this implementation, those Terraform variables are reused to avoid a wider Terraform refactor, but they are passed into Lambda as Gemini settings.
+
+That means:
+- put your **Gemini API key** into `anthropic_api_key`
+- put your **Gemini model name** into `anthropic_model`
+
+## Configure `infra/dev.tfvars`
+
+Update `infra/dev.tfvars` before deployment.
+
+Example:
+
+```tfvars
+project_name = "cordi-tony-demo"
+aws_region   = "us-east-1"
+
+bucket_name = "your-globally-unique-bucket-name"
+
+anthropic_api_key = "YOUR_GEMINI_API_KEY"
+anthropic_model   = "gemini-3-flash-preview"
+
+cors_allow_origins = [
+  "http://localhost:3000"
+]
+
+lambda_timeout     = 30
+lambda_memory_size = 256
 ```
 
-Update `.env.local` with your deployed API Gateway base URL:
+Notes:
+- `bucket_name` must be globally unique across AWS
+- do not commit real API keys
+- if you change `cors_allow_origins`, re-run Terraform apply
 
-```env
-NEXT_PUBLIC_API_BASE_URL=https://YOUR_API_ID.execute-api.YOUR_REGION.amazonaws.com
-```
+## Deploy infrastructure with Terraform
 
-The app will then run on:
-
-```text
-http://localhost:3000
-```
-
----
-
-## 3. Terraform setup and deploy
-
-From the repo root:
+From the repository root:
 
 ```bash
 cd infra
 terraform init
-terraform plan -var-file=dev.tfvars
+terraform plan -var-file=dev.tfvars | tee terraform-plan.txt
 terraform apply -var-file=dev.tfvars
 ```
 
-After apply completes, get the API base URL:
+After deployment, get the API base URL:
 
 ```bash
 terraform output -raw api_base_url
 ```
 
-Paste that value into `frontend/.env.local` as `NEXT_PUBLIC_API_BASE_URL`.
-
----
-
-## 4. Example `dev.tfvars`
-
-A starter `dev.tfvars` is included in `infra/dev.tfvars`.
-
-Update the placeholder values before running Terraform.
-
-Key values:
-- `project_name`
-- `aws_region`
-- `bucket_name`
-- `anthropic_api_key`
-- `cors_allow_origins`
-
----
-
-## 5. Lambda environment and secrets
-
-This starter stores the Anthropic API key in a Lambda environment variable provisioned by Terraform.
-
-For the assessment brief, this satisfies the requirement of storing the AI key securely via environment variables.
-
-**Important:**
-- do not commit real secrets
-- replace placeholder values in `dev.tfvars` locally before applying
-
----
-
-## 6. Generate the Terraform plan output file
-
-The assessment asks for a Terraform plan output text file inside `/infra`.
-
-Run:
+You can also inspect other outputs:
 
 ```bash
-cd infra
-terraform plan -var-file=dev.tfvars | tee terraform-plan.txt
+terraform output
 ```
 
-This repo includes a placeholder `terraform-plan.txt` that explains why the real plan could not be generated in this environment. Before submission, replace it with your real local plan output.
+## Run the frontend locally
 
----
+From the repository root:
 
-## 7. Demo checklist
+```bash
+cd frontend
+cp .env.local.example .env.local
+```
 
-Use `docs/demo-checklist.md` to record a quick screen capture showing:
-1. frontend running locally
-2. request submitted
-3. structured summary returned
-4. Terraform files present
-5. S3 object written after a request
+Update `frontend/.env.local`:
 
----
+```env
+NEXT_PUBLIC_API_BASE_URL=https://YOUR_API_ID.execute-api.YOUR_REGION.amazonaws.com
+```
 
-## 8. AI usage history for submission
+Do **not** add `/summarise` to this value.
 
-The brief explicitly asks for your AI usage history.
+Then start the app:
 
-Suggested submission additions:
-- export or screenshot your ChatGPT / Claude conversations
-- include your prompts, debugging notes, and architecture prompts in `docs/`
-- keep `docs/ai-usage.md` and expand it with your real workflow notes
+```bash
+npm install
+npm run dev
+```
 
----
+Open:
 
-## 9. Notes for submission
+```text
+http://localhost:3000
+```
 
-Before submitting, make sure you have:
-- replaced the placeholder API key and bucket name values
-- run `terraform plan -var-file=dev.tfvars | tee terraform-plan.txt`
-- taken a screenshot or short video of the app working end-to-end
-- pushed everything to GitHub
+## Test the API directly
 
----
+From the `infra` directory:
 
-## 10. Potential improvements (optional)
+```bash
+curl -i -X POST "$(terraform output -raw api_base_url)/summarise" \
+  -H "Content-Type: application/json" \
+  -d '{"meetingNotes":"Alice confirmed the launch will move to next Friday. Bob will update the deck by Wednesday. The team decided to pause feature X."}'
+```
 
-If you have extra time, good polish points include:
-- switching the model output to guaranteed JSON schema mode
-- adding request IDs to the UI
-- validating input length before submit
-- adding tests for the Lambda parser
-- moving the API key from env vars to SSM Parameter Store
+If the deployment is healthy, you should receive a `200` response with fields similar to:
 
----
+```json
+{
+  "summary": "...",
+  "keyDecisions": ["..."],
+  "actionItems": ["..."],
+  "rawModelResponse": "...",
+  "logKey": "logs/2026/03/19/example.json"
+}
+```
+
+## Frontend behaviour
+
+The frontend includes:
+- a single textarea for raw meeting notes
+- a submit button
+- a loading state while waiting for the API
+- graceful error display
+- sections for Summary, Key Decisions, and Action Items
+
+## S3 logging
+
+For every successful request, Lambda writes a JSON object to S3 containing:
+- `timestamp`
+- `input`
+- `raw_output`
+- `parsed_output`
+
+The UI also displays the returned S3 log key so the result can be verified.
+
+## Security notes
+
+- Real secrets should not be committed into Git
+- `frontend/.env.local` is for local frontend configuration only
+- The model API key is injected into Lambda through Terraform-provisioned environment variables
+- Before submission, verify that `dev.tfvars` does not contain a real committed key
+
+## Terraform files
+
+The infrastructure is intentionally split into logical files:
+- `providers.tf`
+- `variables.tf`
+- `s3.tf`
+- `iam.tf` 
+- `lambda.tf`
+- `api_gateway.tf`
+- `outputs.tf`
+
+## Submission checklist
+
+Before submitting, confirm that you have:
+- a working end-to-end screenshot or short demo video
+- `infra/terraform-plan.txt` generated from your real environment
+- a clean README with exact run steps 
+- screenshots or exported history of AI assistance used during the task
+- removed any real secrets from the repository
 
 ## Model used
 
-This starter defaults to an Anthropic Claude model via the Messages API. The exact model value is defined in Terraform as `model` and passed into Lambda as an environment variable.
+This implementation uses **Gemini** through the Google Generative Language API.
+
+In the current codebase, Terraform variables still use the names `api_key` and `model` for compatibility with the original starter, but the deployed Lambda uses those values as the Gemini API key and Gemini model configuration.
+ 
