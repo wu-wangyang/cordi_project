@@ -219,7 +219,8 @@ This implementation uses **Gemini** through the Google Generative Language API.
 
 In the current codebase, Terraform variables still use the names `api_key` and `model` for compatibility with the original starter, but the deployed Lambda uses those values as the Gemini API key and Gemini model configuration.
 
-## AI Usage
+## AI Usage 
+(please see [docs/ai-usage.md](docs/ai-usage.md) for full conversation history)
 AI tools were used in the build process to support planning, debugging, and documentation. Specifically, AI was used to:
 
 clarify the project requirements and break the task into frontend, backend, and infrastructure steps
