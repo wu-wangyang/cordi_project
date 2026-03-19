@@ -208,9 +208,21 @@ The infrastructure is intentionally split into logical files:
 
 ## Submission checklist
 - a working end-to-end screenshot
-  ![logo](docs/images/working_sample.png)
+  <br>
+  `Example 1`
+     <img width="933" height="803" alt="Screenshot 2026-03-19 at 13 20 49" src="https://github.com/user-attachments/assets/20df93f8-ceb7-4ba9-86df-8e5e718e6565" />
+  `Example 2`  
+    <img width="919" height="729" alt="Screenshot 2026-03-19 at 13 25 37" src="https://github.com/user-attachments/assets/6f081915-91f8-4fa0-b533-75473d6cf80f" />
+  `Example 3`
+    <img width="917" height="774" alt="Screenshot 2026-03-19 at 13 26 09" src="https://github.com/user-attachments/assets/d7a2e691-9bc7-4f44-95c3-825304c39ae5" />
+  `Example 4` 
+    <img width="902" height="688" alt="Screenshot 2026-03-19 at 13 26 41" src="https://github.com/user-attachments/assets/8e7530d0-8614-404e-abe6-81eb87eb15a8" />
+  `Example 5`
+    <img width="900" height="719" alt="Screenshot 2026-03-19 at 13 28 00" src="https://github.com/user-attachments/assets/aee70289-72f9-4615-a5a5-e08f9fef7244" />
+
 - `infra/terraform-plan.txt` generated from your real environment
-  ![logo](docs/images/terraform-plan.png)
+  <img width="1346" height="529" alt="Screenshot 2026-03-19 at 13 33 10" src="https://github.com/user-attachments/assets/1778abb0-0aa7-4ea1-96ca-f858bd15bc43" />
+
 
 ## Model used
 
