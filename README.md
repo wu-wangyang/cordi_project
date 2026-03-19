@@ -19,7 +19,6 @@ Each request is also logged to S3 with the raw input, model output, parsed outpu
 - **Model integration:** Gemini via Google Generative Language API
 
 ## Architecture
-![logo](docs/images/web_screenshot.png)
 1. The user enters raw meeting notes in the Next.js frontend.
 2. The frontend sends a `POST /summarise` request to API Gateway.
 3. API Gateway invokes the Lambda summariser.
@@ -80,8 +79,8 @@ The original starter Terraform variable names are still called:
 In this implementation, those Terraform variables are reused to avoid a wider Terraform refactor, but they are passed into Lambda as Gemini settings.
 
 That means:
-- put your **Gemini API key** into `anthropic_api_key`
-- put your **Gemini model name** into `anthropic_model`
+- put your **Gemini API key** into `api_key`
+- put your **Gemini model name** into `model`
 
 ## Configure `infra/dev.tfvars`
 
@@ -108,9 +107,7 @@ lambda_memory_size = 256
 
 Notes:
 - `bucket_name` must be globally unique across AWS
-- do not commit real API keys
-- if you change `cors_allow_origins`, re-run Terraform apply
-
+  
 ## Deploy infrastructure with Terraform
 
 From the repository root:
@@ -128,27 +125,19 @@ After deployment, get the API base URL:
 terraform output -raw api_base_url
 ```
 
-You can also inspect other outputs:
-
-```bash
-terraform output
-```
-
 ## Run the frontend locally
 
 From the repository root:
 
 ```bash
 cd frontend
-cp .env.local.example .env.local
 ```
-
-Update `frontend/.env.local`:
-
+```md
+Manually create a file named `.env.local` in the `frontend` folder, then add:
+```
 ```env
 NEXT_PUBLIC_API_BASE_URL=https://YOUR_API_ID.execute-api.YOUR_REGION.amazonaws.com
 ```
-
 Do **not** add `/summarise` to this value.
 
 Then start the app:
@@ -187,7 +176,7 @@ If the deployment is healthy, you should receive a `200` response with fields si
 ```
 
 ## Frontend behaviour
-
+![logo](docs/images/web_screenshot.png)
 The frontend includes:
 - a single textarea for raw meeting notes
 - a submit button
