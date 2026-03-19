@@ -41,7 +41,6 @@ Each request is also logged to S3 with the raw input, model output, parsed outpu
 │   │   ├── globals.css
 │   │   ├── layout.tsx
 │   │   └── page.tsx
-│   ├── .env.local.example
 │   ├── next.config.ts
 │   ├── package.json
 │   ├── postcss.config.js
